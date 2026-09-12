@@ -1,0 +1,143 @@
+# vitals — ASCII Art Gallery
+
+Medical-themed ASCII art for fun.
+Because what's a terminal project without ASCII art?
+
+─────────────────────────────────────────────
+
+## Normal Sinus Rhythm (60-100 BPM)
+
+      ___       ___       ___
+     /   \     /   \     /   \
+  __/     \___/     \___/     \___
+   P      Q  R  S      T
+
+  Heart says: "all good"
+
+
+## Tachycardia (>100 BPM)
+
+   /\/\/\/\/\/\/\/\/\/\/\/\
+   Heart says: "ohnoohnoohno"
+
+
+## Bradycardia (<60 BPM)
+
+   /~\         /~\         /~\
+   Heart says: "...... calm ......"
+
+
+## Asystole (Flatline, 0 BPM)
+
+   ________________________
+   Heart says: "brb"
+
+
+## Heart (anatomical, sort of)
+
+        ___-___
+      .'        '.
+     /   _    _   \
+    |   (o)  (o)   |
+    |      __      |
+     \   \__/   /
+      '.______.'
+   "it's definitely a heart"
+
+
+## Stethoscope
+
+     /|
+    / |
+   |  |          (
+   |  |         ( )
+   |  |          (
+   |__|    ___
+          /   \
+         |     |
+          \___/
+
+
+## IV Drip
+
+   +---------+
+   |  o o o  |    <- bubbles
+   |    |    |
+   |    |    |
+   +----+----+
+        |
+        |
+        v
+   --/--/--/---   <- into patient's arm
+
+
+## Hospital Monitor (this is literally the program, in ASCII)
+
+  +-------------------------+
+  | HR    72   +-+-+-+    |
+  | SpO2  98   +-+-+-+    |
+  | BP    118/76          |
+  |                        |
+  | /\  /\  /\  /\  /\    |
+  |                        |
+  | [All values simulated] |
+  +-------------------------+
+
+
+## Syringe
+
+       __
+      /  \
+     |    |
+     |    |
+      \__/
+       ||
+       ||
+       ||
+      /  \
+     /____\
+   "just a little prick"
+
+
+## Pill Capsule
+
+    +--------+
+   /  HAPPY  \
+  |   PILL   |
+   \        /
+    +------+
+
+
+## DNA Helix
+
+        ^
+       / \
+      / | \
+     /  |  \
+    /   |   \
+   |    |    |
+   |    |    |
+   |    |    |
+    \   |   /
+     \  |  /
+      \ | /
+       \|/
+        v
+   "what makes you, you"
+
+
+## Skeleton (doing a vitals check)
+
+       .-.
+      (o.o)
+       |=|
+      /   \
+     |     |   __
+     |     |  /  \
+      \___/  |    |
+             |____|
+
+
+─────────────────────────────────────────────
+
+Got more ASCII art? Add it in a PR!
