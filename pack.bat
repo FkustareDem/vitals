@@ -26,8 +26,8 @@ if exist dist rmdir /s /q dist
 mkdir "dist\vitals"
 copy /y vitals.exe "dist\vitals\" >nul
 if exist vitals.ini copy /y vitals.ini "dist\vitals\" >nul
-if exist PROJECT.md copy /y PROJECT.md "dist\vitals\" >nul
-if exist README.md  copy /y README.md  "dist\vitals\" >nul
+if exist README.md    copy /y README.md    "dist\vitals\" >nul
+if exist CHANGELOG.md copy /y CHANGELOG.md "dist\vitals\" >nul
 
 echo [4/4] zipping ...
 powershell -NoProfile -Command "Compress-Archive -Path 'dist\vitals\*' -DestinationPath 'dist\vitals-win64.zip' -Force"
