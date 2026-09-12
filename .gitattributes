@@ -1,0 +1,23 @@
+# Normalize line endings to CRLF (MSVC / .bat / .ini are all Windows-native)
+* text=auto eol=crlf
+
+*.c          text eol=crlf
+*.h          text eol=crlf
+*.rc         text eol=crlf
+*.bat        text eol=crlf
+*.ps1        text eol=crlf
+*.ini        text eol=crlf
+*.md         text eol=crlf
+*.yml        text eol=crlf
+*.gitattributes text eol=lf
+*.gitignore     text eol=lf
+
+# Binary - never touch these
+*.ico        binary
+*.exe        binary
+*.png        binary
+*.zip        binary
+
+# Keep GitHub language stats focused on C
+*.bat        linguist-vendored=false
+vitals.c     linguist-detectable=true

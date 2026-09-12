@@ -1,0 +1,29 @@
+name: build
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # 把 MSVC 环境配置进 PATH (windows-latest 自带 VS2022)
+      - uses: ilammy/msvc-dev-cmd@v1
+
+      - name: 编译资源
+        run: rc /nologo vitals.rc
+
+      - name: 编译
+        run: cl /nologo /W3 /O2 /utf-8 vitals.c vitals.res /link /SUBSYSTEM:WINDOWS /ENTRY:wWinMainCRTStartup user32.lib gdi32.lib advapi32.lib shell32.lib
+
+      - name: 上传产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: vitals-win64
+          path: |
+            vitals.exe
+            vitals.ini
+            PROJECT.md

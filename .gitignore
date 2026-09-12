@@ -1,0 +1,22 @@
+# ---- build output ----
+*.exe
+*.obj
+*.res
+*.pdb
+*.ilk
+*.exp
+*.lib
+
+# ---- runtime artifacts ----
+ftrace.txt
+setlog.txt
+bench.txt
+selftest.txt
+dump_*.bmp
+vitals.state
+isolated/
+commitmsg.tmp
+
+# ---- packaging output ----
+dist/
+*.zip
