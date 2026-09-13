@@ -245,64 +245,8 @@ README.md                 本文件
 - 每台设备绑定不同的指标组合（选 Watch D2 就只显示 HR/SpO2/BP）
 - 用 `timeBeginPeriod` 或定时器队列替代部分逻辑，进一步降低唤醒抖动
 
-## 九、怎么发到 GitHub
 
-### 核心结论：exe 不进仓库，用 Releases 发
-
-| 放哪 | 放什么 | 为什么 |
-|---|---|---|
-| **仓库** | 源码 + 配置模板 + 构建脚本 | 别人能编译、能看实现、能提 issue。Git 不适合存二进制 —— 每次改动都存一整份，仓库会迅速膨胀 |
-| **Releases** | `vitals-win64.zip` | 普通用户下载解压就能用，不用装编译器 |
-
-### 关于「只发一个 exe」
-
-**从 v1.1 起可以了。** exe 里内置了一份默认 `vitals.ini`（RCDATA 资源），
-**第一次运行会自动在 exe 旁边生成它**。
-
-在此之前确实不行 —— 程序只会**读** ini，从来不会创建。所以单独一个 exe 跑起来用的是代码里的兜底默认值，
-而且你想改配置连个文件都没有。
-
-> 实现细节：`EnsureDefaultIni()` 用 `FindResource / LoadResource / LockResource` 从自己的资源段取出
-> 那份 ini 写出去。注意写入路径不能用 `GetIniPath()` —— 那是**查找**函数（会兜底到 `%APPDATA%`），
-> 要用 `GetModuleFileName` 拼出 exe 同目录。exe 目录不可写（比如装在 `Program Files`）时才退回 `%APPDATA%`。
-
-### 具体步骤
-
-1. **建仓库**，把这些传上去（`.gitignore` 会自动挡住 exe 和临时文件）：
-   ```
-   vitals.c  vitals.ini  vitals.rc  vitals.ico
-   build.bat  pack.bat  make_icon.ps1
-   .gitignore  README.md  CHANGELOG.md  CONTRIBUTING.md  LICENSE
-   docs/DEVLOG.md  .github/workflows/build.yml  .editorconfig  .gitattributes
-   ```
-2. **打包**：双击 `pack.bat` → 生成 `dist\vitals-win64.zip`（约 190 KB）
-3. **发 Release**：仓库页 → 右侧 `Releases` → `Draft a new release`
-   - Tag：`v1.1.0`，Title：`vitals v1.1.0`
-   - 把 `vitals-win64.zip` **拖到附件区**（不是提交进仓库）
-   - `Publish release`
-4. 别人下载 zip → 解压 → 双击 `vitals.exe`（ini 自动生成）
-
-### 建议再补两样
-
-- **`LICENSE`**：不写协议 = 默认「保留所有权利」，别人**不能**合法使用或分发。想开源就加个 MIT 之类（一行说明 + 一段文本）
-- **仓库 Description + Topics**：`windows` `win32` `taskbar` `monitor` `cyberpunk` `c` —— GitHub 站内搜索主要靠这个
-
-### 可选：让 GitHub 自动帮你编译
-
-`.github/workflows/build.yml` 已经写好了。推到 GitHub 后每次 push 都会在
-GitHub 的 Windows 机器上自动编译，产物在 Actions 页面的 Artifacts 里可下载。
-
-```yaml
-- uses: ilammy/msvc-dev-cmd@v1     # 把 MSVC 环境配进 PATH（windows-latest 自带 VS2022）
-- run: rc /nologo vitals.rc
-- run: cl /nologo /W3 /O2 /utf-8 vitals.c vitals.res /link /SUBSYSTEM:WINDOWS ...
-```
-
-> ⚠️ 两点坑：① `cl` 必须带 `/utf-8`（源码有中文）；② `vitals.rc` 必须先编译成 `.res`。
-
----
-
-## 十、声明
+## 九、声明
 
 ### 设计灵感
 
