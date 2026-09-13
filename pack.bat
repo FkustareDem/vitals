@@ -24,9 +24,6 @@ if errorlevel 1 ( echo [!] build failed & pause & exit /b 1 )
 echo [3/4] assembling dist ...
 if exist dist rmdir /s /q dist
 mkdir "dist\vitals"
-if exist docs\screenshot.png (
-    mkdir "dist\vitals\docs" 2>nul
-    copy /y docs\screenshot.png "dist\vitals\docs\" >nul
 )
 copy /y vitals.exe "dist\vitals\" >nul
 if exist vitals.ini copy /y vitals.ini "dist\vitals\" >nul
