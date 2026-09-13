@@ -1469,6 +1469,95 @@ static void EnsureMask(int w, int h, int rad)
 
 static HBITMAP MakeDib(int w, int h, void **bits);
 
+/* ---- DWM 亚克力: 由系统合成器在背后"实时"模糊 ----
+   这才是"实时获取背景"的正解 —— 不抓屏、不藏窗口、零延迟.
+   之前用"藏窗口 -> BitBlt 抓桌面 -> 自己模糊"的土办法, 那个"藏一下"就是每 2 秒闪一下的元凶. */
+#ifndef WCA_ACCENT_POLICY
+#define WCA_ACCENT_POLICY 19
+#endif
+#ifndef ACCENT_ENABLE_ACRYLICBLURBEHIND
+#define ACCENT_ENABLE_ACRYLICBLURBEHIND 4
+#endif
+
+typedef struct {
+    DWORD AccentState;
+    DWORD AccentFlags;
+    DWORD GradientColor;          /* ABGR: 0xAABBGGRR */
+    DWORD AnimationId;
+} VITALS_ACCENT_POLICY;
+
+typedef struct {
+    DWORD Attrib;
+    void *pvData;
+    SIZE_T cbData;
+} VITALS_WCADATA;
+
+static int g_acrylicOk    = -1;   /* -1=没试过  0=系统不支持  1=已启用 */
+static int g_acrylicAlpha = 90;   /* 亚克力生效时的背景不透明度 */
+
+static int TryEnableAcrylic(HWND hwnd, int alpha, COLORREF base)
+{
+    typedef BOOL (WINAPI *PFN_SETWCA)(HWND, VITALS_WCADATA *);
+    HMODULE u;
+    PFN_SETWCA p;
+    VITALS_ACCENT_POLICY ap;
+    VITALS_WCADATA d;
+
+    if (!hwnd) return 0;
+    u = GetModuleHandleW(L"user32.dll");
+    if (!u) return 0;
+    p = (PFN_SETWCA)(void *)GetProcAddress(u, "SetWindowCompositionAttribute");
+    if (!p) return 0;
+
+    ap.AccentState   = ACCENT_ENABLE_ACRYLICBLURBEHIND;
+    ap.AccentFlags   = 2;
+    ap.GradientColor = ((DWORD)alpha << 24)
+                     | ((DWORD)GetBValue(base) << 16)
+                     | ((DWORD)GetGValue(base) << 8)
+                     |  (DWORD)GetRValue(base);
+    ap.AnimationId   = 0;
+    d.Attrib = WCA_ACCENT_POLICY;
+    d.pvData = &ap;
+    d.cbData = sizeof(ap);
+    return p(hwnd, &d) ? 1 : 0;
+}
+
+static void DisableAcrylic(HWND hwnd)
+{
+    typedef BOOL (WINAPI *PFN_SETWCA)(HWND, VITALS_WCADATA *);
+    HMODULE u;
+    PFN_SETWCA p;
+    VITALS_ACCENT_POLICY ap;
+    VITALS_WCADATA d;
+
+    if (!hwnd || g_acrylicOk != 1) return;
+    u = GetModuleHandleW(L"user32.dll");
+    if (!u) return;
+    p = (PFN_SETWCA)(void *)GetProcAddress(u, "SetWindowCompositionAttribute");
+    if (!p) return;
+    ap.AccentState = 0;                   /* ACCENT_DISABLED */
+    ap.AccentFlags = 0;
+    ap.GradientColor = 0;
+    ap.AnimationId = 0;
+    d.Attrib = WCA_ACCENT_POLICY;
+    d.pvData = &ap;
+    d.cbData = sizeof(ap);
+    p(hwnd, &d);
+    g_acrylicOk = 0;
+}
+
+/* 按当前配置切换毛玻璃实现: 优先用系统亚克力, 不支持才退回静态抓屏 */
+static void ApplyBackdropMode(void)
+{
+    if (!g_hwnd) return;
+    if (g_cfg.bgStyle == 2) {
+        if (g_acrylicOk != 1)
+            g_acrylicOk = TryEnableAcrylic(g_hwnd, g_acrylicAlpha, g_cfg.bg);
+    } else if (g_acrylicOk == 1) {
+        DisableAcrylic(g_hwnd);
+    }
+}
+
 static void EnsureBackdrop(int w, int h)
 {
     if (g_bdBmp && g_bdW == w && g_bdH == h) return;
@@ -1561,8 +1650,10 @@ static void PaintBackdrop(void)
     int x, y, alpha;
     if (g_cfg.bgStyle == 0 || !g_memBits) return;
     alpha = g_cfg.bgAlpha;
-    if (alpha < 10) {                    /* 没设透明度时给每种风格一个合适的默认值, 免得选了却看不见 */
-        alpha = (g_cfg.bgStyle == 1) ? 235 : (g_cfg.bgStyle == 2) ? 220 : 150;
+    if (alpha < 10) {                    /* 没设透明度时给每种风格一个合适的默认值 */
+        if (g_cfg.bgStyle == 1)      alpha = 235;
+        else if (g_cfg.bgStyle == 2) alpha = (g_acrylicOk == 1) ? g_acrylicAlpha : 220;
+        else                         alpha = 150;
     }
 
     for (y = 0; y < g_winH; y++) {
@@ -1580,7 +1671,9 @@ static void PaintBackdrop(void)
         }
         for (x = 0; x < g_winW; x++) {
             int cr = ir, cg = ig, cb = ib;
-            if (g_cfg.bgStyle == 2 && g_bdValid && g_bdBits && g_bdW == g_winW && g_bdH == g_winH) {
+            if (g_cfg.bgStyle == 2 && g_acrylicOk != 1 &&
+                g_bdValid && g_bdBits && g_bdW == g_winW && g_bdH == g_winH) {
+                /* 只有系统亚克力不可用时, 才用静态抓屏的兜底图 */
                 BYTE *p = (BYTE *)g_bdBits + ((size_t)y * g_winW + x) * 4;
                 cr = p[2] * 55 / 100;                /* 压暗, 保证字读得清 */
                 cg = p[1] * 55 / 100;
@@ -2155,9 +2248,10 @@ static void FullReset(void)
     ComposeTexts();
     Layout();
     FitFont();
+    ApplyBackdropMode();                   /* 先定毛玻璃实现: 优先系统亚克力, 不支持才静态抓屏 */
     Refresh();
-    if (g_cfg.bgStyle == 2) {              /* 毛玻璃: 抓背景 + 重画一次 */
-        EnsureBackdrop(g_winW, g_winH);
+    if (g_cfg.bgStyle == 2 && g_acrylicOk != 1) {
+        EnsureBackdrop(g_winW, g_winH);    /* 只有退回静态方案才需要抓屏 */
         RefreshBackdrop();
         PaintAll();
         PushToScreen();
@@ -2303,15 +2397,9 @@ static LRESULT CALLBACK WndProc(HWND h, UINT msg, WPARAM wp, LPARAM lp)
             if (!g_hTimer) ScrollTick(FrameDt());
         } else {                                        /* 数值刷新 */
             if (UpdateValues()) Refresh();              /* 没槽动就不重画 */
-            /* 毛玻璃: 每 2 秒重抓一次背景(桌面上的东西可能变了) */
-            if (g_cfg.bgStyle == 2 && (GetTickCount64() - g_bdTime) > 2000) {
-                EnsureBackdrop(g_winW, g_winH);
-                RefreshBackdrop();
-                PaintAll();
-                PushToScreen();
-                g_lastSx = (int)g_scroll;
-                g_dirty  = 0;
-            }
+            /* 以前这里有个"每 2 秒重抓一次背景", 已删除 ——
+               抓屏必须先把窗口藏起来(否则抓到的是自己), 那个"藏一下"就是每 2 秒闪一下的元凶.
+               现在毛玻璃走系统亚克力(实时模糊), 不需要任何重抓. */
             /* 看门狗: 帧定时器要是被什么操作弄丢了, 超过 500ms 没出帧就重新武装,
                动画永远不会卡死 */
             if (g_hTimer && (GetTickCount64() - g_lastTickMs) > 500) {
@@ -2344,7 +2432,7 @@ static LRESULT CALLBACK WndProc(HWND h, UINT msg, WPARAM wp, LPARAM lp)
         if (g_drag) {
             g_drag = 0;
             ReleaseCapture();
-            if (g_cfg.bgStyle == 2) {          /* 拖完位置变了, 背景要重抓 */
+            if (g_cfg.bgStyle == 2 && g_acrylicOk != 1) {   /* 亚克力实时生效, 不用重抓 */
                 RefreshBackdrop();
                 PaintAll();
                 PushToScreen();
@@ -2622,6 +2710,10 @@ static void Bench(void)
     lg = _wfopen(L"bench.txt", L"w, ccs=UTF-8");
     if (!lg) return;
     fwprintf(lg, L"窗口尺寸     = %d x %d\n", g_winW, g_winH);
+    ApplyBackdropMode();
+    fwprintf(lg, L"毛玻璃实现   = %s\n",
+             (g_acrylicOk == 1) ? L"系统亚克力 (DWM 实时模糊, 无闪烁)" :
+             (g_cfg.bgStyle == 2 ? L"静态抓屏兜底 (系统不支持亚克力)" : L"(未启用毛玻璃)"));
     fwprintf(lg, L"整行/一圈    = %d / %d\n", g_lineW, g_period);
     fwprintf(lg, L"目标帧率     = %d fps   (每帧预算 %.2f ms)\n",
              g_cfg.fps, g_frameInterval * 1000.0);
